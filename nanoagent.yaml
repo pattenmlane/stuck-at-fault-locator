@@ -1,0 +1,43 @@
+_ > nanoagent.plugin.v0001.ManifestConfig:
+id: stuck-at-fault-locator
+name: Stuck At Fault Locator
+version: 0.1.0
+status: ready
+spec: nanoagent.plugin/v0001
+
+runtime > nanoagent.plugin.v0001.RuntimeConfig:
+  type: mcp_stdio
+  command: [uv, run, --frozen, python, -m, plugin]
+
+permissions > nanoagent.plugin.v0001.PermissionsConfig:
+  network > nanoagent.plugin.v0001.NetworkConfig:
+    hosts: []
+  filesystem > nanoagent.plugin.v0001.FilesystemConfig:
+    write: [workspace]
+
+# One entry per contract.Tool; its input and output classes are contract.TOOLS's.
+tools > dict[contract.Tool, nanoagent.plugin.v0001.ToolConfig]:
+  pin_circuit:
+    description: Pin the task's answer key, the circuit and its planted fault, out of the agent's sight
+  read_circuit:
+    description: Read a case's netlist, its fixed test log and each net's fault-free trace on the log
+  test_hypothesis:
+    description: Simulate one candidate fault and return how many log entries it reproduces
+  report_fault:
+    description: Save the located net and stuck value as faults/<seed>.json in the workspace
+
+# One entry per contract.Task; its input class is contract.TASKS's.
+tasks > dict[contract.Task, nanoagent.plugin.v0001.TaskConfig]:
+  locate-fault:
+    description: Find the single stuck-at fault that explains a faulty device's test log
+    runner: agent
+    tools: [read_circuit, test_hypothesis, report_fault]
+    reference: pin_circuit
+    instructions: |-
+      Plan, five steps at most. Step 1: read_circuit with the seed. Step 2: in ONE reply, call test_hypothesis once for every candidate; several tool calls in a single reply run together and count as one step. Step 3: if no result had matches equal to total, test the faults you skipped the same way. Then report_fault with the fault found, then submit. Reason briefly and do not simulate by hand.
+      Circuit. AND, OR, NAND, NOR and XOR gates read two nets and NOT reads one; XOR is 1 when its inputs differ. Each gate drives its own net. Input bits of a log entry follow the inputs list, and output bits follow the outputs list.
+      Fault. Exactly one net is stuck at 0 or 1, on every vector: whatever drives it is ignored, and every gate reading it sees the stuck value. Any net can be tried, primary inputs included.
+      Log. expected is what a fault-free device gives and observed is what the faulty one gave. An entry fails when they differ, and an output fails when its bit differs in any entry. In traces, character i of values is the net's fault-free value on log entry i, and reaches lists the outputs the net can influence.
+      Candidates. A stuck net changes nothing on a vector where its fault-free value already equals the stuck value. So a candidate is a net that reaches every failing output and has the same fault-free value on every failing entry; its stuck_value is the opposite of that value. There are at most six candidates.
+      Answer. The answer is a fault whose matches equals total. Faults that do this behave identically on all 16 input vectors, so any one of them is right. A fault with fewer matches is wrong, however close.
+      Submit seed, path, net and stuck_value exactly as report_fault returned them.

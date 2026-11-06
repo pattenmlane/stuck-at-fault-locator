@@ -1,0 +1,12 @@
+_ > nanoagent.plugin.v0001.ProductConfig:
+tagline: "Track down the one stuck wire in a faulty logic circuit"
+summary: "Give it a case number and an agent reads a small logic circuit and the test log from a faulty device, narrows the suspects, simulates them, and saves the net it blames. A check of every possible fault decides whether it got there."
+highlights:
+  - "Every case has one answer, proven by trying every fault on every net"
+  - "Faults that behave identically are all accepted, so a correct diagnosis is never marked wrong"
+  - "Blaming the output, or the first gate on the path, never works"
+steps:
+  - "Ask for a case by number, such as case 7"
+  - "The agent reads the circuit and picks the suspect faults"
+  - "It simulates them together and keeps the one that fits the whole log"
+  - "It saves the fault, and the verdict shows whether it is the right one"
